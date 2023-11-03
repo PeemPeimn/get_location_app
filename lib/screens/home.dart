@@ -64,9 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          const Text(
+            "Record location \nevery x second(s)",
+            style: TextStyle(fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
           Container(
-            width: 200,
-            padding: const EdgeInsets.all(30),
+            width: 150,
+            padding: const EdgeInsets.all(20),
             child: TextFormField(
               controller: inputController,
               keyboardType: TextInputType.number,
@@ -75,10 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 FilteringTextInputFormatter.digitsOnly
               ],
               decoration: const InputDecoration(
-                label: Text(
-                  "Record every x second(s)",
-                  textAlign: TextAlign.center,
-                ),
                 // labelText: "Record every x second(s)",
                 hintText: "second(s)",
               ),
