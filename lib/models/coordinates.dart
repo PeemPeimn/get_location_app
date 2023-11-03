@@ -4,8 +4,8 @@ class Coordinates {
 
   const Coordinates(this.latitude, this.longitude);
 
-  Map toJson() {
-    return {"lat": latitude, "lon": longitude};
+  List<double> toJson() {
+    return [latitude, longitude];
   }
 
   @override
