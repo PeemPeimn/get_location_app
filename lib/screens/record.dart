@@ -48,7 +48,8 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void getPosition() async {
-    Position position = await Geolocator.getCurrentPosition();
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation);
     positionList.add(Coordinates(position.latitude, position.longitude));
     // log("latitude ${position.latitude}, longitude ${position.longitude}");
     // log(positionList.toString());
