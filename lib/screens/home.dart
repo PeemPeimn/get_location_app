@@ -1,11 +1,12 @@
 import 'dart:developer';
-
 import 'package:flutter/services.dart';
+import 'package:get_location_app/models/exceptions.dart';
+import 'package:location/location.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get_location_app/models/coordinates.dart';
 import 'package:get_location_app/screens/data.dart';
 import 'package:get_location_app/screens/record.dart';
+import 'package:get_location_app/widgets/dialogs.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,32 +16,91 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String testText = "";
-  List<List<Coordinates>> dataList = [];
-  var inputController = TextEditingController();
+  bool _backgroundMode = false;
+  bool _warned = false;
+  final Location _location = Location();
+  final List<List<Coordinates>> _dataList = [];
+  final _inputController = TextEditingController();
 
-  void toRecord(BuildContext context) async {
+  Future<void> _requestPermission() async {
+    bool serviceEnabled;
+    PermissionStatus permissionGranted;
+
+    serviceEnabled = await _location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await _location.requestService();
+      if (!serviceEnabled) {
+        throw const PermissionDeniedException(
+            "Location services are disabled.");
+      }
+    }
+
+    permissionGranted = await _location.hasPermission();
+    if (permissionGranted == PermissionStatus.denied) {
+      permissionGranted = await _location.requestPermission();
+      if (permissionGranted != PermissionStatus.granted) {
+        throw const PermissionDeniedException(
+            "Location permissions are denied");
+      }
+    }
+
+    if (permissionGranted == PermissionStatus.deniedForever) {
+      throw const PermissionDeniedException(
+          "Location permission are forever denied");
+    }
+  }
+
+  Future<void> _toggleBackgroundMode(BuildContext context) async {
     try {
-      var seconds = int.parse(inputController.text);
+      if (!_warned) {
+        await alertRequestPermission(context, "Warning",
+            'To enable background mode, you have to change the location permission to "Always"\n\n\nNOTE: Web platform cannot use this function.');
+        _warned = true;
+      }
+      await _location.enableBackgroundMode(
+          enable: (_backgroundMode ? false : true));
+
+      setState(() {
+        _backgroundMode = (_backgroundMode ? false : true);
+      });
+      log("Background Mode: ${_backgroundMode.toString()}");
+    } catch (e) {
+      if (!context.mounted) return;
+
+      alertRequestPermission(context, "Error",
+          'Cannot enable background mode. Please change location permission to "Always"\n\n\nNOTE: Web platform cannot use this function.');
+    }
+  }
+
+  void _toRecord(BuildContext context) async {
+    try {
+      var seconds = int.parse(_inputController.text);
 
       if (seconds < 1) {
         throw "Input second must be >= 1";
       }
 
-      await requestPermission();
+      await _requestPermission();
 
       if (!context.mounted) return;
 
       var result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => RecordScreen(seconds: seconds),
+          builder: (context) => RecordScreen(
+            seconds: seconds,
+            location: _location,
+          ),
         ),
       );
 
-      dataList.add(result as List<Coordinates>);
+      _dataList.add(result as List<Coordinates>);
 
       // log(dataList.toString());
+    } on PermissionDeniedException catch (e) {
+      if (!context.mounted) return;
+
+      alertRequestPermission(context, "Error", e.toString());
     } catch (e) {
       if (!context.mounted) return;
 
@@ -48,11 +108,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void toData(BuildContext context) async {
+  void _toData(BuildContext context) async {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DataScreen(dataList: dataList),
+        builder: (context) => DataScreen(dataList: _dataList),
       ),
     );
   }
@@ -65,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const Text(
-            "Record location \nevery x second(s)",
+            "Record location\non change\nevery x second(s)",
             style: TextStyle(fontSize: 18),
             textAlign: TextAlign.center,
           ),
@@ -73,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 150,
             padding: const EdgeInsets.all(20),
             child: TextFormField(
-              controller: inputController,
+              controller: _inputController,
               keyboardType: TextInputType.number,
               inputFormatters: <TextInputFormatter>[
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
@@ -91,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: FilledButton(
               onPressed: () {
                 log("clicked");
-                toRecord(context);
+                _toRecord(context);
               },
               child: const Text("Start"),
             ),
@@ -100,66 +160,22 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(5),
             child: FilledButton(
                 onPressed: () {
-                  toData(context);
+                  _toData(context);
                 },
                 child: const Text("Data")),
           ),
+          Container(
+            padding: const EdgeInsets.all(5),
+            child: FilledButton(
+              onPressed: () async {
+                await _toggleBackgroundMode(context);
+              },
+              child: const Text("Toggle background mode"),
+            ),
+          ),
+          Text("Backgound Mode: ${_backgroundMode ? "on" : "off"}"),
         ],
       )),
     );
   }
-}
-
-Future<void> requestPermission() async {
-  bool serviceEnabled;
-  LocationPermission permission;
-
-  // Test if location services are enabled.
-  serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    // Location services are not enabled don't continue
-    // accessing the position and request users of the
-    // App to enable the location services.
-    return Future.error('Location services are disabled.');
-  }
-
-  permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      // Permissions are denied, next time you could try
-      // requesting permissions again (this is also where
-      // Android's shouldShowRequestPermissionRationale
-      // returned true. According to Android guidelines
-      // your App should show an explanatory UI now.
-      return Future.error('Location permissions are denied');
-    }
-  }
-
-  if (permission == LocationPermission.deniedForever) {
-    // Permissions are denied forever, handle appropriately.
-    return Future.error(
-        'Location permissions are permanently denied, we cannot request permissions.');
-  }
-}
-
-Future<void> alert(BuildContext context, String errorMessage) {
-  return showDialog<void>(
-    barrierDismissible: false,
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Error'),
-        content: Text(errorMessage),
-        actions: <Widget>[
-          TextButton(
-            child: const Text('Close'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      );
-    },
-  );
 }
