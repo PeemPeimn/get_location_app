@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:location/location.dart';
 import 'package:format/format.dart';
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:get_location_app/models/coordinates.dart';
 
 class RecordScreen extends StatefulWidget {
@@ -63,11 +64,13 @@ class _RecordScreenState extends State<RecordScreen> {
     super.initState();
     _listenLocation();
     _initClock();
+    WakelockPlus.enable();
   }
 
   @override
   void dispose() {
     _stopListen();
+    WakelockPlus.disable();
     super.dispose();
   }
 
