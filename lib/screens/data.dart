@@ -11,7 +11,7 @@ class DataScreen extends StatefulWidget {
 }
 
 class _DataScreenState extends State<DataScreen> {
-  final _box = Hive.box<List<Coordinates>>('data');
+  final _box = Hive.box<List>('data');
 
   void _delete(dynamic key) {
     _box.delete(key);
@@ -22,7 +22,7 @@ class _DataScreenState extends State<DataScreen> {
   Widget build(BuildContext context) {
     List<Widget> dataButtons = [];
     for (var key in _box.keys) {
-      List<dynamic> data = _box.get(key)!;
+      List<dynamic> data = _box.get(key, defaultValue: [])!;
       List<Coordinates> coordinatesList = data.cast<Coordinates>();
 
       dataButtons.add(DataButton(

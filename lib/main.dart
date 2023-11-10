@@ -12,7 +12,7 @@ void main() async {
     Hive.init(appDocumentDir.path);
   }
   Hive.registerAdapter(CoordinatesAdapter());
-  await Hive.openBox<List<Coordinates>>('data');
+  await Hive.openBox<List>('data');
   runApp(const MainApp());
 }
 

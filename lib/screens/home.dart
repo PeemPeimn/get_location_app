@@ -4,7 +4,6 @@ import 'package:hive/hive.dart';
 import 'package:get_location_app/models/exceptions.dart';
 import 'package:location/location.dart';
 import 'package:flutter/material.dart';
-import 'package:get_location_app/models/coordinates.dart';
 import 'package:get_location_app/screens/data.dart';
 import 'package:get_location_app/screens/record.dart';
 import 'package:get_location_app/widgets/dialogs.dart';
@@ -21,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _warned = false;
   final Location _location = Location();
   final _inputController = TextEditingController();
-  final _box = Hive.box<List<Coordinates>>('data');
+  final _box = Hive.box<List>('data');
 
   Future<void> _requestPermission() async {
     bool serviceEnabled;
