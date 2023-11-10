@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:flutter/services.dart';
+import 'package:hive/hive.dart';
 import 'package:get_location_app/models/exceptions.dart';
 import 'package:location/location.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _backgroundMode = false;
   bool _warned = false;
   final Location _location = Location();
-  final List<List<Coordinates>> _dataList = [];
   final _inputController = TextEditingController();
+  final _box = Hive.box<List<Coordinates>>('data');
 
   Future<void> _requestPermission() async {
     bool serviceEnabled;
@@ -84,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!context.mounted) return;
 
+      var time = DateTime.now().toLocal();
       var result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -94,9 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      _dataList.add(result as List<Coordinates>);
-
-      // log(dataList.toString());
+      await _box.put(time.toString(), result);
     } on PermissionDeniedException catch (e) {
       if (!context.mounted) return;
 
@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DataScreen(dataList: _dataList),
+        builder: (context) => const DataScreen(),
       ),
     );
   }

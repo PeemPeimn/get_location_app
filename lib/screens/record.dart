@@ -24,7 +24,7 @@ class _RecordScreenState extends State<RecordScreen> {
   StreamSubscription<LocationData>? _locationSubscription;
 
   Future<void> _listenLocation() async {
-    log((await widget.location.isBackgroundModeEnabled()).toString());
+    log("Background Mode: ${(await widget.location.isBackgroundModeEnabled()).toString()}");
     await widget.location.changeSettings(
         accuracy: LocationAccuracy.navigation, interval: widget.seconds * 1000);
 
