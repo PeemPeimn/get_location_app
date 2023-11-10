@@ -1,58 +1,77 @@
-// import 'dart:developer';
 import 'dart:async';
-
+import 'dart:developer';
+import 'package:location/location.dart';
 import 'package:format/format.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:get_location_app/models/coordinates.dart';
 
 class RecordScreen extends StatefulWidget {
   final int seconds;
+  final Location location;
 
-  const RecordScreen({
-    super.key,
-    required this.seconds,
-  });
+  const RecordScreen(
+      {super.key, required this.seconds, required this.location});
 
   @override
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  List<Coordinates> positionList = [];
-  bool isStopped = false;
-  int secondsElapsed = 0;
+  final List<Coordinates> _positionList = [];
+  int _secondsElapsed = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    getPositionList();
+  StreamSubscription<LocationData>? _locationSubscription;
+
+  Future<void> _listenLocation() async {
+    log("Background Mode: ${(await widget.location.isBackgroundModeEnabled()).toString()}");
+    await widget.location.changeSettings(
+        accuracy: LocationAccuracy.navigation, interval: widget.seconds * 1000);
+
+    _locationSubscription =
+        widget.location.onLocationChanged.handleError((dynamic err) {
+      log(err.toString());
+    }).listen((LocationData currentLocation) {
+      if (currentLocation.latitude == null ||
+          currentLocation.latitude == null) {
+        return;
+      }
+
+      double lat = currentLocation.latitude as double;
+      double lon = currentLocation.longitude as double;
+      Coordinates coords = Coordinates(lat, lon);
+      _positionList.add(coords);
+      log(coords.toString());
+    });
   }
 
-  void getPositionList() async {
-    var seconds = Duration(seconds: widget.seconds);
-    Timer.periodic(seconds, (Timer t) {
-      if (isStopped) {
-        t.cancel();
-      } else {
-        getPosition();
-      }
-    });
+  Future<void> _stopListen() async {
+    await _locationSubscription?.cancel();
+  }
+
+  void _initClock() async {
     Timer.periodic(const Duration(seconds: 1), (Timer t) {
       if (mounted) {
         setState(() {
-          secondsElapsed += 1;
+          _secondsElapsed += 1;
         });
       }
     });
   }
 
-  void getPosition() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation);
-    positionList.add(Coordinates(position.latitude, position.longitude));
-    // log("latitude ${position.latitude}, longitude ${position.longitude}");
-    // log(positionList.toString());
+  @override
+  void initState() {
+    super.initState();
+    _listenLocation();
+    _initClock();
+    WakelockPlus.enable();
+  }
+
+  @override
+  void dispose() {
+    _stopListen();
+    WakelockPlus.disable();
+    super.dispose();
   }
 
   String secondsToClockString(int seconds) {
@@ -72,7 +91,7 @@ class _RecordScreenState extends State<RecordScreen> {
           Container(
             padding: const EdgeInsets.all(5),
             child: Text(
-              secondsToClockString(secondsElapsed),
+              secondsToClockString(_secondsElapsed),
               style: const TextStyle(fontSize: 32),
             ),
           ),
@@ -81,8 +100,7 @@ class _RecordScreenState extends State<RecordScreen> {
             child: FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () {
-                  isStopped = true;
-                  Navigator.pop(context, positionList);
+                  Navigator.pop(context, _positionList);
                 },
                 child: const Text("Stop")),
           ),

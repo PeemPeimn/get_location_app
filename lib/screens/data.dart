@@ -1,25 +1,35 @@
+import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
 import 'package:get_location_app/models/coordinates.dart';
 import 'package:get_location_app/widgets/data_button.dart';
 
 class DataScreen extends StatefulWidget {
-  final List<List<Coordinates>> dataList;
-
-  const DataScreen({super.key, required this.dataList});
+  const DataScreen({super.key});
 
   @override
   State<DataScreen> createState() => _DataScreenState();
 }
 
 class _DataScreenState extends State<DataScreen> {
+  final _box = Hive.box<List>('data');
+
+  void _delete(dynamic key) {
+    _box.delete(key);
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Widget> dataButtons = [];
-    for (int i = 0; i < widget.dataList.length; i++) {
-      dataButtons.add(
-        DataButton(
-            buttonName: (i + 1).toString(), locationList: widget.dataList[i]),
-      );
+    for (var key in _box.keys) {
+      List<dynamic> data = _box.get(key, defaultValue: [])!;
+      List<Coordinates> coordinatesList = data.cast<Coordinates>();
+
+      dataButtons.add(DataButton(
+        buttonName: key,
+        locationList: coordinatesList,
+        deleteFunc: _delete,
+      ));
     }
 
     return Scaffold(
